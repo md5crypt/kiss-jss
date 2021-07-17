@@ -1,0 +1,42 @@
+{
+	"name": "kiss-jss",
+	"version": "1.0.0",
+	"description": "a KISS version of the jss css-in-js solution",
+	"main": "lib/Jss.js",
+	"files": [
+		"lib/*"
+	],
+	"directories": {
+		"lib": "lib"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/md5crypt/kiss-jss.git"
+	},
+	"scripts": {
+		"build": "tsc",
+		"start": "tsc --watch",
+		"lint": "eslint src/*.ts",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Marek Korzeniowski",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/md5crypt/kiss-jss/issues"
+	},
+	"homepage": "https://github.com/md5crypt/kiss-jss#readme",
+	"keywords": [
+		"css-in-js",
+		"css"
+	],
+	"devDependencies": {
+		"@types/node": "^14.14.21",
+		"@typescript-eslint/eslint-plugin": "^4.14.1",
+		"@typescript-eslint/parser": "^4.14.1",
+		"eslint": "^7.18.0",
+		"typescript": "^4.1.3"
+	},
+	"dependencies": {
+		"csstype": "^3.0.8"
+	}
+}
