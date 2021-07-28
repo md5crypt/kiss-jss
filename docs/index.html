@@ -1,0 +1,182 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1"/>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.2/codemirror.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.62.2/codemirror.min.css">
+		<script type="text/javascript" src="demo-bundle.js"></script>>
+		<script>
+			const Jss = require("/src/Jss.ts").default
+			const UniqueIdGen = require("/src/UniqueIdGen.ts").default
+			const defaultUnits = require("/src/defaultUnits.ts").default
+			const uniqueIdGen = new UniqueIdGen()
+			const instance = new Jss({
+				idGen: uniqueIdGen.generator,
+				defaultUnits,
+				prefixedKeys: [
+					"user-select"
+				]
+			})
+			function format(data) {
+				const re = /([{};])|([^{};]+)/g
+				let acc = ""
+				let indent = 0
+				let output = ""
+				while(true) {
+					const match = re.exec(data)
+					if (!match) {
+						break
+					}
+					if (match[2]) {
+						acc += match[2]
+					} else {
+						switch(match[1]) {
+							case "{":
+								output += "\t".repeat(indent) + acc + " {\n"
+								indent += 1
+								acc = ""
+								break
+							case "}":
+								indent -= 1
+								output += "\t".repeat(indent) + acc + "}\n"
+								acc = ""
+								break
+							case ";":
+								output += "\t".repeat(indent) + acc.replace(/:/g, ": ") + ";\n"
+								acc = ""
+								break
+						}
+					}
+				}
+				return output + acc
+			}
+			window.addEventListener("DOMContentLoaded", () => {
+				const update = () => {
+					try {
+						uniqueIdGen.reset()
+						const result = instance.compile(eval("(" + document.querySelector("textarea").value + ")"), "demo")
+						document.querySelector("#content").textContent = "/* css source */\n\n" + format(result.source) + "\n\n/* classes */\n\n" + JSON.stringify(result.classes, undefined, 4)
+					} catch (e) {
+						document.querySelector("#content").textContent = e
+					}
+				}
+				document.querySelector("textarea").addEventListener("keyup", () => update())
+				document.querySelectorAll(".sync").forEach(item => item.addEventListener("scroll", e => {
+					if (item.classList.contains("synchronized")) {
+						item.classList.remove("synchronized")
+					} else {
+						document.querySelectorAll(".sync").forEach(x => {
+							if (x != item) {
+								x.classList.add("synchronized")
+								x.scrollTop = item.scrollTop / (item.scrollHeight - item.offsetHeight) * (x.scrollHeight - x.offsetHeight);
+							}
+						})
+					}
+				}))
+				update()
+				CodeMirror.fromTextArea(document.querySelector("textarea"), {
+					lineNumbers: true,
+					indentWithTabs: true
+				}).on("change", x => {
+					document.querySelector("textarea").value = x.getValue()
+					update()
+				})
+			})
+		</script>
+		<style>
+			textarea, pre {
+				box-sizing: border-box;
+				width: 100%;
+				padding: 0 25px;
+				font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+				tab-size: 4;
+				-moz-tab-size: 4;
+			}
+			html {
+				height: 100%;
+			}
+			body {
+				padding: 0;
+				margin: 0;
+				display: flex;
+				flex-direction: row;
+				max-width:none;
+				overflow: hidden;
+				height: 100%;
+			}
+			body > div {
+				flex-grow: 1;
+				width: 0;
+				height: 100%;
+				overflow: auto;
+			}
+			body >:last-child {
+				background-color: rgba(0,0,0,0.07);
+				flex-grow: 1;
+				width: 0;
+				height: 100%;
+			}
+			*:focus {
+				outline: none;
+			}
+			.CodeMirror {
+				height: auto;
+				font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="sync">
+<textarea>{
+	foo: {
+		animationName: "$spin",
+		animationDuration: "2s",
+		"& div, pre": {
+			color: "white",
+			"& td, tr": {
+				color: "gray",
+			}
+		},
+		"@media (hover: hover)": {
+			"&:hover": {
+		 		backgroundColor: "red"
+			}
+		}
+	},
+	bar: {
+		userSelect: "none",
+		"&$foo": {
+			top: 2
+		}
+	},
+	rab: {
+		composes: "$bar",
+		left: 0,
+		"& div:first-child": {
+			left: 2
+		}
+	},
+	"@media screen": {
+		bar: {
+			width: "100%"
+		}
+	},
+	"@keyframes spin": {
+		from: { transform: "rotate(0deg)" },
+		to: { transform: "rotate(360deg)" }
+	},
+	"@font-face": {
+		fontFamily: "font",
+		src: "url('font.woff2') format('woff2')"
+	},
+	"@global": {
+		body: {
+			width: 100
+		}
+	}
+}</textarea></div>
+		<div class="sync" >
+			<pre id="content">Loading...</pre>
+		</div>
+	</body>
+</html>

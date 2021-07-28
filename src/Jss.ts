@@ -13,6 +13,19 @@ export interface JssOptions {
 	idGen: (rule: string, sheet?: string) => string
 }
 
+function stringProduct(a: string[] | undefined, b: string[]) {
+	const result = []
+	if (!a) {
+		return b
+	}
+	for (let i = 0; i < a.length; i += 1) {
+		for (let j = 0; j < b.length; j += 1) {
+			result.push(a[i] + b[j])
+		}
+	}
+	return result
+}
+
 export class Jss {
 	private idGen: (rule: string, sheet?: string) => string
 	private defaultUnits: Map<string, string>
@@ -28,16 +41,16 @@ export class Jss {
 	}
 
 	private processFontFace(data: JssRule) {
-		return ((Array.isArray(data) ? data : [data]) as JssRule[]).map(x => "@font-face{" + this.processRule("object", x) + "}").join("")
+		return ((Array.isArray(data) ? data : [data]) as JssRule[]).map(x => "@font-face" + this.processRule("normal", x)).join("")
 	}
 
-	private processRule(mode: "normal" | "object" | "object-resolve", data: JssRule, path: string = "") {
+	private processRule(mode: "normal" | "object" | "object-resolve", data: JssRule, path?: string[]) {
 		const buffer = [] as string[]
 		const items = [] as string[]
 		for (const key in data) {
 			const item = data[key]
 			if (key[0] == "&") {
-				buffer.push(this.processRule("normal", item as JssRule, path + key.slice(1).replace(/\$/g, ".$")))
+				buffer.push(this.processRule("normal", item as JssRule, stringProduct(path, key.slice(1).replace(/\$/g, ".$").split(/,/g))))
 			} else if (key[0] == "@") {
 				const match = key.match(/^@[^\s]*/)!
 				switch (match[0]) {
@@ -54,7 +67,7 @@ export class Jss {
 						buffer.push(key + " " + item + ";")
 				}
 			} else if (mode != "normal") {
-				buffer.push(this.processRule("normal", item as JssRule, path + (mode == "object-resolve" ? ".$" + key : key)))
+				buffer.push(this.processRule("normal", item as JssRule, stringProduct(path, [mode == "object-resolve" ? ".$" + key : key])))
 			} else if (key != "composes") {
 				const keyName = key.replace(/[A-Z]/g, x => "-" + x.toLocaleLowerCase())
 				const value = typeof item == "string" ? item : (item as number) + (this.defaultUnits.get(keyName) || "")
@@ -66,7 +79,7 @@ export class Jss {
 				}
 			}
 		}
-		return items.length ? path + "{" + items.join("") + "}" + buffer.join("") : buffer.join("")
+		return items.length ? (path ? path.join(", ") : "") + "{" + items.join("") + "}" + buffer.join("") : buffer.join("")
 	}
 
 	public compile<T extends string>(data: JssRuleSet<T>, sheet?: string) {
@@ -99,7 +112,7 @@ export class Jss {
 				const id = this.idGen(key, sheet)
 				idMap.set(key, id)
 				classMap.set(key, (item as JssRule).composes ? id + " " + (item as JssRule).composes : id)
-				buffer.push(this.processRule("normal", item as JssRule, "." + id))
+				buffer.push(this.processRule("normal", item as JssRule, ["." + id]))
 			}
 		}
 		const source = buffer.join("").replace(/\$([A-Za-z0-9_-]+)/g, (_, x) => idMap.get(x) || x)

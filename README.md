@@ -15,6 +15,10 @@ This is a tiny replacement that implements features of the JSS core with the fol
 - jss-plugin-default-unit
 - jss-plugin-vendor-prefixer
 
+## Live demo
+
+https://md5crypt.github.io/kiss-jss
+
 ## Api
 
 I did not bother to make the api compatible, I just made sure the style syntax is compatible. Most notably all runtime features are dropped, but I never used them anyway so `¯\_(ツ)_/¯`

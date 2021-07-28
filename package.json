@@ -1,6 +1,6 @@
 {
 	"name": "kiss-jss",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "a KISS version of the jss css-in-js solution",
 	"main": "lib/Jss.js",
 	"files": [
@@ -16,6 +16,7 @@
 	"scripts": {
 		"build": "tsc",
 		"start": "tsc --watch",
+		"docs": "browserify -p [tsify --module commonjs] -o docs/demo-bundle.js -r ./src/Jss.ts -r ./src/UniqueIdGen.ts -r ./src/defaultUnits.ts",
 		"lint": "eslint src/*.ts",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
@@ -33,7 +34,9 @@
 		"@types/node": "^14.14.21",
 		"@typescript-eslint/eslint-plugin": "^4.14.1",
 		"@typescript-eslint/parser": "^4.14.1",
+		"browserify": "^17.0.0",
 		"eslint": "^7.18.0",
+		"tsify": "^5.0.4",
 		"typescript": "^4.1.3"
 	},
 	"dependencies": {

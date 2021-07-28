@@ -2,8 +2,15 @@ export default class UniqueIdGen {
 	private map = new Map<string, number>()
 
 	public static create() {
-		const instance = new this()
-		return (rule: string, sheet?: string) => instance.get(rule, sheet)
+		return (new this()).generator
+	}
+
+	public get generator() {
+		return (rule: string, sheet?: string) => this.get(rule, sheet)
+	}
+
+	public reset() {
+		this.map.clear()
 	}
 
 	public get(rule: string, sheet?: string) {
