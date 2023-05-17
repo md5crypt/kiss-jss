@@ -13,6 +13,7 @@
 			const instance = new Jss({
 				idGen: uniqueIdGen.generator,
 				defaultUnits,
+				sharedSheetName: "shared",
 				prefixedKeys: [
 					"user-select"
 				]
@@ -153,8 +154,14 @@
 		composes: "$bar",
 		left: 0,
 		"& div:first-child": {
-			left: 2
+			left: 2,
+			"$bar &": {
+				left: 100
+			}
 		}
+	},
+	$car: {
+		display: "none"
 	},
 	"@media screen": {
 		bar: {

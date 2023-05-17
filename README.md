@@ -15,6 +15,31 @@ This is a tiny replacement that implements features of the JSS core with the fol
 - jss-plugin-default-unit
 - jss-plugin-vendor-prefixer
 
+Also extra stuff I added on the way:
+
+### Shared classes
+
+If a class name starts from `$` it will become a shared class. It can be referenced in all style compiled using the same s instance. `sharedSheetName` defined in Jss constructor options will be passed to id generator for shared classes.
+
+### Suffix ampersand
+
+In addition to normal prefix ampersand syntax (`"& something"`) suffix ampersand (`"something &"`) can be used. It will paste current class path after given string instead of before. Example:
+
+```javascript
+{
+	foo: {
+	}
+	bar: {
+		"& $foo" {
+			// .bar .foo
+		}
+		"$foo &" {
+			// .foo .bar
+		}
+	}
+}
+```
+
 ## Live demo
 
 https://md5crypt.github.io/kiss-jss
@@ -37,6 +62,9 @@ interface JssOptions {
 	// lut table for autoprefixer
 	// format: ["user-select", "transform"]
 	prefixedKeys: string[]
+
+	// name of the sheet that will contain shared classes
+	sharedSheetName?: string
 
 	// callback for generating class names
 	idGen: (rule: string, sheet?: string) => string
@@ -75,6 +103,13 @@ class Jss {
 	// returns an object with the class name mapping.
 	inject<T extends string>(target: HTMLStyleElement | null, data: JssRuleSet<T>, sheet?: string): Record<T, string>
 
+	// compile a jss style object into css source and buffer it in internal buffer.
+	// sheet gets passed to idGen as-is.
+	// returns an object with the class name mapping.
+	buffer<T extends string>(data: JssRuleSet<T>, sheet?: string): Record<T, string>
+
+	// inject all buffered styles to head and clear buffer
+	flush()
 }
 ```
 
@@ -114,6 +149,7 @@ import defaultUnits from "kiss-jss/lib/defaultUnits"
 const instance = new Jss({
 	idGen: UniqueIdGen.create(),
 	defaultUnits,
+	sharedSheetName: "shared",
 	prefixedKeys: [
 		"user-select"
 	]

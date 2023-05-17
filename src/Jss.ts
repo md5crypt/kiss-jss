@@ -10,6 +10,7 @@ export interface JssRule extends StandardProperties<string | number, string | nu
 export interface JssOptions {
 	defaultUnits: Record<string, string[]>
 	prefixedKeys: string[]
+	sharedSheetName?: string
 	idGen: (rule: string, sheet?: string) => string
 }
 
@@ -27,16 +28,22 @@ function stringProduct(a: string[] | undefined, b: string[]) {
 }
 
 export class Jss {
-	private idGen: (rule: string, sheet?: string) => string
-	private defaultUnits: Map<string, string>
-	private prefixedKeys: Set<string>
+	private _idGen: (rule: string, sheet?: string) => string
+	private _defaultUnits: Map<string, string>
+	private _prefixedKeys: Set<string>
+	private _shared: Map<string, string>
+	private _sharedSheetName?: string
+	private _buffer: string[]
 
 	public constructor(options: JssOptions) {
-		this.idGen = options.idGen
-		this.prefixedKeys = new Set(options.prefixedKeys)
-		this.defaultUnits = new Map()
+		this._idGen = options.idGen
+		this._prefixedKeys = new Set(options.prefixedKeys)
+		this._defaultUnits = new Map()
+		this._shared = new Map()
+		this._sharedSheetName = options.sharedSheetName
+		this._buffer = []
 		for (const unit in options.defaultUnits) {
-			options.defaultUnits[unit].forEach(x => this.defaultUnits.set(x, unit))
+			options.defaultUnits[unit].forEach(x => this._defaultUnits.set(x, unit))
 		}
 	}
 
@@ -51,6 +58,8 @@ export class Jss {
 			const item = data[key]
 			if (key[0] == "&") {
 				buffer.push(this.processRule("normal", item as JssRule, stringProduct(path, key.slice(1).replace(/\$/g, ".$").split(/,/g))))
+			} else if (path && key[key.length - 1] == "&") {
+				buffer.push(this.processRule("normal", item as JssRule, stringProduct(key.slice(0, -1).replace(/\$/g, ".$").split(/,/g), path)))
 			} else if (key[0] == "@") {
 				const match = key.match(/^@[^\s]*/)!
 				switch (match[0]) {
@@ -70,9 +79,9 @@ export class Jss {
 				buffer.push(this.processRule("normal", item as JssRule, stringProduct(path, [mode == "object-resolve" ? ".$" + key : key])))
 			} else if (key != "composes") {
 				const keyName = key.replace(/[A-Z]/g, x => "-" + x.toLocaleLowerCase())
-				const value = typeof item == "string" ? item : (item as number) + (this.defaultUnits.get(keyName) || "")
+				const value = typeof item == "string" ? item : (item as number) + (this._defaultUnits.get(keyName) || "")
 				items.push(keyName + ":" + value + ";")
-				if (this.prefixedKeys.has(keyName)) {
+				if (this._prefixedKeys.has(keyName)) {
 					items.push("-ms-" + keyName + ":" + value + ";")
 					items.push("-moz-" + keyName + ":" + value + ";")
 					items.push("-webkit-" + keyName + ":" + value + ";")
@@ -85,14 +94,14 @@ export class Jss {
 	public compile<T extends string>(data: JssRuleSet<T>, sheet?: string) {
 		const buffer = [] as string[]
 		const classMap = new Map<string, string>()
-		const idMap = new Map<string, string>()
+		const idMap = new Map<string, string>(this._shared)
 		for (const key in data) {
 			const item = data[key]
 			const match = key.match(/^(@[^\s]+)(?:\s+([^\s].*))?/)
 			if (match) {
 				switch (match[1]) {
 					case "@keyframes": {
-						const id = this.idGen("keyframes-" + match[2], sheet)
+						const id = this._idGen("keyframes-" + match[2], sheet)
 						idMap.set(match[2], id)
 						buffer.push("@keyframes " + id + "{" + this.processRule("object", item as JssRule) + "}")
 						break
@@ -109,8 +118,19 @@ export class Jss {
 						buffer.push(key + " " + item + ";")
 				}
 			} else {
-				const id = this.idGen(key, sheet)
-				idMap.set(key, id)
+				let id
+				if (key[0] == "$") {
+					const trimmedKey = key.slice(1)
+					id = this._shared.get(trimmedKey)
+					if (!id) {
+						id = this._idGen(trimmedKey, this._sharedSheetName)
+						this._shared.set(trimmedKey, id)
+						idMap.set(trimmedKey, id)
+					}
+				} else {
+					id = this._idGen(key, sheet)
+					idMap.set(key, id)
+				}
 				classMap.set(key, (item as JssRule).composes ? id + " " + (item as JssRule).composes : id)
 				buffer.push(this.processRule("normal", item as JssRule, ["." + id]))
 			}
@@ -132,6 +152,18 @@ export class Jss {
 			target.appendChild(textNode)
 		}
 		return classes
+	}
+
+	public buffer<T extends string>(data: JssRuleSet<T>, sheet?: string) {
+		const {classes, source} = this.compile(data, sheet)
+		this._buffer.push(source)
+		return classes
+	}
+
+	public flush() {
+		const style = document.createElement("style")
+		style.appendChild(document.createTextNode(this._buffer.join("")))
+		document.head.appendChild(style)
 	}
 }
 

@@ -1,5 +1,5 @@
 export default class UniqueIdGen {
-	private map = new Map<string, number>()
+	private _map = new Map<string, number>()
 
 	public static create() {
 		return (new this()).generator
@@ -10,13 +10,13 @@ export default class UniqueIdGen {
 	}
 
 	public reset() {
-		this.map.clear()
+		this._map.clear()
 	}
 
 	public get(rule: string, sheet?: string) {
 		const id = sheet ? sheet + "-" + rule : rule
-		const n = this.map.get(id)
-		this.map.set(id, n ? n + 1 : 1)
+		const n = this._map.get(id)
+		this._map.set(id, n ? n + 1 : 1)
 		return id + (n || "")
 	}
 }

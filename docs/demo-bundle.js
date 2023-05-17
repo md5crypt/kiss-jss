@@ -16,11 +16,14 @@ function stringProduct(a, b) {
 }
 class Jss {
     constructor(options) {
-        this.idGen = options.idGen;
-        this.prefixedKeys = new Set(options.prefixedKeys);
-        this.defaultUnits = new Map();
+        this._idGen = options.idGen;
+        this._prefixedKeys = new Set(options.prefixedKeys);
+        this._defaultUnits = new Map();
+        this._shared = new Map();
+        this._sharedSheetName = options.sharedSheetName;
+        this._buffer = [];
         for (const unit in options.defaultUnits) {
-            options.defaultUnits[unit].forEach(x => this.defaultUnits.set(x, unit));
+            options.defaultUnits[unit].forEach(x => this._defaultUnits.set(x, unit));
         }
     }
     processFontFace(data) {
@@ -33,6 +36,9 @@ class Jss {
             const item = data[key];
             if (key[0] == "&") {
                 buffer.push(this.processRule("normal", item, stringProduct(path, key.slice(1).replace(/\$/g, ".$").split(/,/g))));
+            }
+            else if (path && key[key.length - 1] == "&") {
+                buffer.push(this.processRule("normal", item, stringProduct(key.slice(0, -1).replace(/\$/g, ".$").split(/,/g), path)));
             }
             else if (key[0] == "@") {
                 const match = key.match(/^@[^\s]*/);
@@ -55,9 +61,9 @@ class Jss {
             }
             else if (key != "composes") {
                 const keyName = key.replace(/[A-Z]/g, x => "-" + x.toLocaleLowerCase());
-                const value = typeof item == "string" ? item : item + (this.defaultUnits.get(keyName) || "");
+                const value = typeof item == "string" ? item : item + (this._defaultUnits.get(keyName) || "");
                 items.push(keyName + ":" + value + ";");
-                if (this.prefixedKeys.has(keyName)) {
+                if (this._prefixedKeys.has(keyName)) {
                     items.push("-ms-" + keyName + ":" + value + ";");
                     items.push("-moz-" + keyName + ":" + value + ";");
                     items.push("-webkit-" + keyName + ":" + value + ";");
@@ -69,14 +75,14 @@ class Jss {
     compile(data, sheet) {
         const buffer = [];
         const classMap = new Map();
-        const idMap = new Map();
+        const idMap = new Map(this._shared);
         for (const key in data) {
             const item = data[key];
             const match = key.match(/^(@[^\s]+)(?:\s+([^\s].*))?/);
             if (match) {
                 switch (match[1]) {
                     case "@keyframes": {
-                        const id = this.idGen("keyframes-" + match[2], sheet);
+                        const id = this._idGen("keyframes-" + match[2], sheet);
                         idMap.set(match[2], id);
                         buffer.push("@keyframes " + id + "{" + this.processRule("object", item) + "}");
                         break;
@@ -95,8 +101,20 @@ class Jss {
                 }
             }
             else {
-                const id = this.idGen(key, sheet);
-                idMap.set(key, id);
+                let id;
+                if (key[0] == "$") {
+                    const trimmedKey = key.slice(1);
+                    id = this._shared.get(trimmedKey);
+                    if (!id) {
+                        id = this._idGen(trimmedKey, this._sharedSheetName);
+                        this._shared.set(trimmedKey, id);
+                        idMap.set(trimmedKey, id);
+                    }
+                }
+                else {
+                    id = this._idGen(key, sheet);
+                    idMap.set(key, id);
+                }
                 classMap.set(key, item.composes ? id + " " + item.composes : id);
                 buffer.push(this.processRule("normal", item, ["." + id]));
             }
@@ -119,6 +137,16 @@ class Jss {
         }
         return classes;
     }
+    buffer(data, sheet) {
+        const { classes, source } = this.compile(data, sheet);
+        this._buffer.push(source);
+        return classes;
+    }
+    flush() {
+        const style = document.createElement("style");
+        style.appendChild(document.createTextNode(this._buffer.join("")));
+        document.head.appendChild(style);
+    }
 }
 exports.Jss = Jss;
 exports.default = Jss;
@@ -128,7 +156,7 @@ exports.default = Jss;
 Object.defineProperty(exports, "__esModule", { value: true });
 class UniqueIdGen {
     constructor() {
-        this.map = new Map();
+        this._map = new Map();
     }
     static create() {
         return (new this()).generator;
@@ -137,12 +165,12 @@ class UniqueIdGen {
         return (rule, sheet) => this.get(rule, sheet);
     }
     reset() {
-        this.map.clear();
+        this._map.clear();
     }
     get(rule, sheet) {
         const id = sheet ? sheet + "-" + rule : rule;
-        const n = this.map.get(id);
-        this.map.set(id, n ? n + 1 : 1);
+        const n = this._map.get(id);
+        this._map.set(id, n ? n + 1 : 1);
         return id + (n || "");
     }
 }
