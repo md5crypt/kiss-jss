@@ -1,6 +1,6 @@
 {
 	"name": "kiss-jss",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "a KISS version of the jss css-in-js solution",
 	"main": "lib/Jss.js",
 	"files": [

@@ -2,14 +2,14 @@ import type { StandardProperties } from "csstype"
 
 export type JssRuleSet<T extends string> = Record<T, JssRule>
 
-export interface JssRule extends StandardProperties<string | number, string | number> {
+export interface JssRule extends StandardProperties<string | number | (number | string)[], string | number | (number | string)[]> {
 	composes?: string
-	[key: string]: string | number | JssRule | JssRuleSet<string> | JssRule[] | undefined
+	[key: string]: string | number | JssRule | JssRuleSet<string> | JssRule[] | (number | string)[] | undefined
 }
 
 export interface JssOptions {
-	defaultUnits: Record<string, string[]>
-	prefixedKeys: string[]
+	defaultUnits?: Record<string, string[]>
+	prefixedKeys?: string[]
 	sharedSheetName?: string
 	idGen: (rule: string, sheet?: string) => string
 }
@@ -51,6 +51,18 @@ export class Jss {
 		return ((Array.isArray(data) ? data : [data]) as JssRule[]).map(x => "@font-face" + this.processRule("normal", x)).join("")
 	}
 
+	private processValue(key: string, value: any): string {
+		if (typeof value == "string") {
+			return value
+		} else if (typeof value == "number") {
+			return value + (this._defaultUnits.get(key) || "")
+		} else if (Array.isArray(value)) {
+			return value.map(x => this.processValue(key, x)).join(" ")
+		} else {
+			return value.toString()
+		}
+	}
+
 	private processRule(mode: "normal" | "object" | "object-resolve", data: JssRule, path?: string[]) {
 		const buffer = [] as string[]
 		const items = [] as string[]
@@ -79,7 +91,7 @@ export class Jss {
 				buffer.push(this.processRule("normal", item as JssRule, stringProduct(path, [mode == "object-resolve" ? ".$" + key : key])))
 			} else if (key != "composes") {
 				const keyName = key.replace(/[A-Z]/g, x => "-" + x.toLocaleLowerCase())
-				const value = typeof item == "string" ? item : (item as number) + (this._defaultUnits.get(keyName) || "")
+				const value = this.processValue(keyName, item)
 				items.push(keyName + ":" + value + ";")
 				if (this._prefixedKeys.has(keyName)) {
 					items.push("-ms-" + keyName + ":" + value + ";")

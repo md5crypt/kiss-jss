@@ -29,6 +29,20 @@ class Jss {
     processFontFace(data) {
         return (Array.isArray(data) ? data : [data]).map(x => "@font-face" + this.processRule("normal", x)).join("");
     }
+    processValue(key, value) {
+        if (typeof value == "string") {
+            return value;
+        }
+        else if (typeof value == "number") {
+            return value + (this._defaultUnits.get(key) || "");
+        }
+        else if (Array.isArray(value)) {
+            return value.map(x => this.processValue(key, x)).join(" ");
+        }
+        else {
+            return value.toString();
+        }
+    }
     processRule(mode, data, path) {
         const buffer = [];
         const items = [];
@@ -61,7 +75,7 @@ class Jss {
             }
             else if (key != "composes") {
                 const keyName = key.replace(/[A-Z]/g, x => "-" + x.toLocaleLowerCase());
-                const value = typeof item == "string" ? item : item + (this._defaultUnits.get(keyName) || "");
+                const value = this.processValue(keyName, item);
                 items.push(keyName + ":" + value + ";");
                 if (this._prefixedKeys.has(keyName)) {
                     items.push("-ms-" + keyName + ":" + value + ";");

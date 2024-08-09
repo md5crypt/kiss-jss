@@ -40,6 +40,21 @@ In addition to normal prefix ampersand syntax (`"& something"`) suffix ampersand
 }
 ```
 
+### Array values
+
+Arrays can be used as property values, for example:
+
+```javascript
+{
+	foo: {
+		padding: [0, 0],
+		border: [1, "solid", "white"]
+	}
+}
+```
+
+The arrays will be joined using `" "` as a delimiter, respecting default units for numeric values.
+
 ## Live demo
 
 https://md5crypt.github.io/kiss-jss
